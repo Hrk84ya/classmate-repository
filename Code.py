@@ -23,21 +23,25 @@ def get_str_input(prompt, allow_empty=False):
         else:
             print("Input cannot be empty. Please try again.")
 
-def get_valid_phone_number(prompt):
+def get_valid_phone_number(prompt, allow_empty=False):
     """Function to get a valid 10-digit phone number from the user."""
     while True:
-        phone_number = get_str_input(prompt)
+        phone_number = get_str_input(prompt, allow_empty)
         if phone_number.isdigit() and len(phone_number) == 10:
             return phone_number
+        elif allow_empty and not phone_number:
+            return None
         else:
             print("Invalid phone number. Please enter a 10-digit phone number.")
 
-def get_valid_email(prompt):
+def get_valid_email(prompt, allow_empty=False):
     """Function to get a valid email address from the user."""
     while True:
-        email = get_str_input(prompt)
+        email = get_str_input(prompt, allow_empty)
         if "@" in email and "." in email:
             return email
+        elif allow_empty and not email:
+            return None
         else:
             print("Invalid email format. Please enter a valid email address.")
 
@@ -51,12 +55,9 @@ def display_menu():
     """Function to display the main menu."""
     print("\nWhat's the purpose of your visit?")
     print("1. Enter student details")
-    print("2. Exit")
-
-def display_search_menu():
-    """Function to display the search menu."""
-    print("\n1. Search via roll number")
-    print("2. Exit")
+    print("2. Edit student details")
+    print("3. Search student data")
+    print("4. Exit")
 
 def display_extended_search_menu():
     """Function to display the extended search menu."""
@@ -143,6 +144,25 @@ def load_data_from_file(filename="student_data.json"):
         print("Data file corrupted. Starting fresh.")
         return {}
 
+def edit_student_data(student_data, roll_number):
+    """Function to edit student details."""
+    if roll_number in student_data:
+        print(f"Editing data for student with roll number: {roll_number}")
+        name = get_str_input("Enter new name (or press Enter to keep current): ", allow_empty=True)
+        phone_number = get_valid_phone_number("Enter new phone number (or press Enter to keep current): ", allow_empty=True)
+        email = get_valid_email("Enter new email (or press Enter to keep current): ", allow_empty=True)
+
+        if name:
+            student_data[roll_number]['name'] = name
+        if phone_number:
+            student_data[roll_number]['phone_number'] = phone_number
+        if email:
+            student_data[roll_number]['email'] = email
+        
+        print("Student data updated successfully!")
+    else:
+        print("No student found with that roll number.")
+
 def main():
     """Main function to handle the overall flow of the repository."""
     display_welcome()
@@ -172,11 +192,16 @@ def main():
                 print("\nStudent data entered successfully!")
 
             save_data_to_file(student_data)  # Save the student data after entry
-            print("\nStudent data entry complete.\n")
-
-            search_student_data(student_data)  # Start the search functionality
 
         elif choice == 2:
+            roll_number = get_int_input("Enter the roll number of the student to edit: ")
+            edit_student_data(student_data, roll_number)
+            save_data_to_file(student_data)  # Save the updated data
+
+        elif choice == 3:
+            search_student_data(student_data)
+
+        elif choice == 4:
             print("\nExiting the repository. Thank you for using our service!")
             break
         else:
