@@ -57,7 +57,8 @@ def display_menu():
     print("1. Enter student details")
     print("2. Edit student details")
     print("3. Search student data")
-    print("4. Exit")
+    print("4. Show all students data")
+    print("5. Exit")
 
 def display_extended_search_menu():
     """Function to display the extended search menu."""
@@ -126,6 +127,19 @@ def search_student_data(student_data):
             break
         else:
             print("Invalid choice. Please try again.")
+
+def show_all_students_data(student_data):
+    """Function to display all students' data in a custom tabular format."""
+    if student_data:
+        print("\nAll Students Data:")
+        print("{:<15} {:<20} {:<15} {:<30}".format("Roll Number", "Name", "Phone Number", "Email"))
+        print("=" * 80)
+        for roll_number, details in student_data.items():
+            print("{:<15} {:<20} {:<15} {:<30}".format(
+                roll_number, details['name'], details['phone_number'], details['email']
+            ))
+    else:
+        print("No student data available.")
 
 def save_data_to_file(data, filename="student_data.json"):
     """Function to save student data to a JSON file."""
@@ -202,6 +216,9 @@ def main():
             search_student_data(student_data)
 
         elif choice == 4:
+            show_all_students_data(student_data)
+
+        elif choice == 5:
             print("\nExiting the repository. Thank you for using our service!")
             break
         else:
