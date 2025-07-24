@@ -1,4 +1,5 @@
 import json
+import re
 
 def get_int_input(prompt, allow_empty=False):
     """Function to get a valid integer input from the user."""
@@ -12,16 +13,19 @@ def get_int_input(prompt, allow_empty=False):
         except ValueError:
             print("Invalid input. Please enter a valid integer.")
 
-def get_str_input(prompt, allow_empty=False):
+def get_str_input(prompt, allow_empty=False, is_name=False):
     """Function to get a non-empty string input from the user."""
     while True:
         user_input = input(prompt).strip()
         if not user_input and allow_empty:
             return None
-        if user_input:
-            return user_input
-        else:
+        if not user_input:
             print("Input cannot be empty. Please try again.")
+            continue
+        if is_name and not is_valid_name(user_input):
+            print("Invalid name. Only letters, spaces, hyphens, and apostrophes are allowed.")
+            continue
+        return user_input.title() if is_name else user_input
 
 def get_valid_phone_number(prompt, allow_empty=False):
     """Function to get a valid 10-digit phone number from the user."""
@@ -34,16 +38,25 @@ def get_valid_phone_number(prompt, allow_empty=False):
         else:
             print("Invalid phone number. Please enter a 10-digit phone number.")
 
+def is_valid_email(email):
+    """Helper function to validate email using regex."""
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    return re.match(pattern, email) is not None
+
+def is_valid_name(name):
+    """Helper function to validate name (only letters, spaces, hyphens, and apostrophes)."""
+    pattern = r'^[A-Za-z\s\'-]+$'
+    return re.match(pattern, name) is not None
+
 def get_valid_email(prompt, allow_empty=False):
     """Function to get a valid email address from the user."""
     while True:
         email = get_str_input(prompt, allow_empty)
-        if "@" in email and "." in email:
-            return email
-        elif allow_empty and not email:
+        if allow_empty and not email:
             return None
-        else:
-            print("Invalid email format. Please enter a valid email address.")
+        if is_valid_email(email):
+            return email.lower()  # Store emails in lowercase for consistency
+        print("Invalid email format. Please enter a valid email address (e.g., user@example.com)")
 
 def display_welcome():
     """Function to display the welcome message."""
@@ -162,7 +175,7 @@ def edit_student_data(student_data, roll_number):
     """Function to edit student details."""
     if roll_number in student_data:
         print(f"Editing data for student with roll number: {roll_number}")
-        name = get_str_input("Enter new name (or press Enter to keep current): ", allow_empty=True)
+        name = get_str_input("Enter new name (or press Enter to keep current): ", allow_empty=True, is_name=True)
         phone_number = get_valid_phone_number("Enter new phone number (or press Enter to keep current): ", allow_empty=True)
         email = get_valid_email("Enter new email (or press Enter to keep current): ", allow_empty=True)
 
@@ -192,12 +205,19 @@ def main():
             for i in range(num_students):
                 print(f"\nEntering details for student {i+1}:")
                 
-                roll_number = get_int_input("Enter student's roll number: ")
-                name = get_str_input("Enter student's name: ")
+                while True:
+                    roll_number = get_int_input("Enter student's roll number: ")
+                    if str(roll_number) in student_data:
+                        print("Error: A student with this roll number already exists.")
+                        print("Please enter a different roll number.")
+                    else:
+                        break
+                        
+                name = get_str_input("Enter student's name: ", is_name=True)
                 phone_number = get_valid_phone_number("Enter student's mobile number: ")
                 email = get_valid_email("Enter student's email: ")
 
-                student_data[roll_number] = {
+                student_data[str(roll_number)] = {
                     'name': name,
                     'phone_number': phone_number,
                     'email': email
