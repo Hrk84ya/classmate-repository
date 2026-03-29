@@ -35,6 +35,9 @@ class StudentManagementSystem:
 
         self.student_data = self.load_data_from_file()
         self.active_btn = None
+        self.ROWS_PER_PAGE = 10
+        self._current_page = 0
+        self._current_table_data = []
 
         self.setup_ui()
 
@@ -249,6 +252,15 @@ class StudentManagementSystem:
             messagebox.showerror("Error", "Invalid email format")
             return
 
+        dup = self._check_duplicate('phone_number', phone)
+        if dup:
+            messagebox.showerror("Error", f"Phone number already belongs to student with roll number {dup}")
+            return
+        dup = self._check_duplicate('email', email.lower())
+        if dup:
+            messagebox.showerror("Error", f"Email already belongs to student with roll number {dup}")
+            return
+
         self.student_data[roll] = {
             'name': name.title(),
             'phone_number': phone,
@@ -328,6 +340,15 @@ class StudentManagementSystem:
             return
         if not self.is_valid_email(email):
             messagebox.showerror("Error", "Invalid email format")
+            return
+
+        dup = self._check_duplicate('phone_number', phone, exclude_roll=roll_number)
+        if dup:
+            messagebox.showerror("Error", f"Phone number already belongs to student with roll number {dup}")
+            return
+        dup = self._check_duplicate('email', email.lower(), exclude_roll=roll_number)
+        if dup:
+            messagebox.showerror("Error", f"Email already belongs to student with roll number {dup}")
             return
 
         self.student_data[roll_number] = {
@@ -420,9 +441,58 @@ class StudentManagementSystem:
                      bg=self.CARD_BG, fg=self.TEXT_SECONDARY).pack(pady=40)
             return
 
-        table_frame = tk.Frame(self.content_frame, bg=self.BG)
+        self._current_table_data = list(self.student_data.items())
+        self._current_page = 0
+        self._table_container = tk.Frame(self.content_frame, bg=self.BG)
+        self._table_container.pack(fill=tk.BOTH, expand=True)
+        self._render_paginated_table()
+
+    def _render_paginated_table(self):
+        for w in self._table_container.winfo_children():
+            w.destroy()
+
+        data = self._current_table_data
+        total = len(data)
+        per_page = self.ROWS_PER_PAGE
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = self._current_page
+        start = page * per_page
+        end = min(start + per_page, total)
+        page_data = data[start:end]
+
+        table_frame = tk.Frame(self._table_container, bg=self.BG)
         table_frame.pack(fill=tk.BOTH, expand=True)
-        self._render_table(table_frame, list(self.student_data.items()))
+        self._render_table(table_frame, page_data)
+
+        if total_pages > 1:
+            pag_frame = tk.Frame(self._table_container, bg=self.BG)
+            pag_frame.pack(fill=tk.X, pady=(10, 0))
+
+            prev_color = self.PRIMARY if page > 0 else self.BORDER
+            prev_btn = tk.Label(pag_frame, text="← Prev", font=("Helvetica", 10, "bold"),
+                                bg=prev_color, fg=self.TEXT_ON_PRIMARY, padx=14, pady=6, cursor="hand2")
+            prev_btn.pack(side=tk.LEFT)
+            if page > 0:
+                prev_btn.bind("<Button-1>", lambda e: self._go_to_page(page - 1))
+                prev_btn.bind("<Enter>", lambda e: prev_btn.configure(bg=self.PRIMARY_HOVER))
+                prev_btn.bind("<Leave>", lambda e: prev_btn.configure(bg=self.PRIMARY))
+
+            info = tk.Label(pag_frame, text=f"Page {page + 1} of {total_pages}  ({start + 1}–{end} of {total})",
+                            font=("Helvetica", 10), bg=self.BG, fg=self.TEXT_SECONDARY)
+            info.pack(side=tk.LEFT, expand=True)
+
+            next_color = self.PRIMARY if page < total_pages - 1 else self.BORDER
+            next_btn = tk.Label(pag_frame, text="Next →", font=("Helvetica", 10, "bold"),
+                                bg=next_color, fg=self.TEXT_ON_PRIMARY, padx=14, pady=6, cursor="hand2")
+            next_btn.pack(side=tk.RIGHT)
+            if page < total_pages - 1:
+                next_btn.bind("<Button-1>", lambda e: self._go_to_page(page + 1))
+                next_btn.bind("<Enter>", lambda e: next_btn.configure(bg=self.PRIMARY_HOVER))
+                next_btn.bind("<Leave>", lambda e: next_btn.configure(bg=self.PRIMARY))
+
+    def _go_to_page(self, page):
+        self._current_page = page
+        self._render_paginated_table()
 
     def _render_table(self, parent, data):
         card = self._make_card(parent)
@@ -465,6 +535,15 @@ class StudentManagementSystem:
                          fg=self.TEXT_PRIMARY, width=w, anchor="w", padx=15, pady=8).pack(side=tk.LEFT)
 
     # --- Validation & Data ---
+    def _check_duplicate(self, field, value, exclude_roll=None):
+        """Check if a value already exists for a given field, optionally excluding a roll number."""
+        for roll, s in self.student_data.items():
+            if roll == exclude_roll:
+                continue
+            if s[field].lower() == value.lower():
+                return roll
+        return None
+
     def is_valid_email(self, email):
         pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(pattern, email) is not None

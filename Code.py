@@ -58,6 +58,15 @@ def get_valid_email(prompt, allow_empty=False):
             return email.lower()  # Store emails in lowercase for consistency
         print("Invalid email format. Please enter a valid email address (e.g., user@example.com)")
 
+def check_duplicate(student_data, field, value, exclude_roll=None):
+    """Check if a value already exists for a given field, optionally excluding a roll number."""
+    for roll, s in student_data.items():
+        if roll == exclude_roll:
+            continue
+        if s[field].lower() == value.lower():
+            return roll
+    return None
+
 def display_welcome():
     """Function to display the welcome message."""
     print("#########################################################")
@@ -185,9 +194,17 @@ def edit_student_data(student_data, roll_number):
         if name:
             student_data[roll_number]['name'] = name
         if phone_number:
-            student_data[roll_number]['phone_number'] = phone_number
+            dup = check_duplicate(student_data, 'phone_number', phone_number, exclude_roll=roll_number)
+            if dup:
+                print(f"Error: Phone number already belongs to student with roll number {dup}. Phone not updated.")
+            else:
+                student_data[roll_number]['phone_number'] = phone_number
         if email:
-            student_data[roll_number]['email'] = email
+            dup = check_duplicate(student_data, 'email', email, exclude_roll=roll_number)
+            if dup:
+                print(f"Error: Email already belongs to student with roll number {dup}. Email not updated.")
+            else:
+                student_data[roll_number]['email'] = email
         
         print("Student data updated successfully!")
     else:
@@ -220,8 +237,22 @@ def main():
                         break
                         
                 name = get_str_input("Enter student's name: ", is_name=True)
-                phone_number = get_valid_phone_number("Enter student's mobile number: ")
-                email = get_valid_email("Enter student's email: ")
+
+                while True:
+                    phone_number = get_valid_phone_number("Enter student's mobile number: ")
+                    dup = check_duplicate(student_data, 'phone_number', phone_number)
+                    if dup:
+                        print(f"Error: Phone number already belongs to student with roll number {dup}.")
+                    else:
+                        break
+
+                while True:
+                    email = get_valid_email("Enter student's email: ")
+                    dup = check_duplicate(student_data, 'email', email)
+                    if dup:
+                        print(f"Error: Email already belongs to student with roll number {dup}.")
+                    else:
+                        break
 
                 student_data[str(roll_number)] = {
                     'name': name,
