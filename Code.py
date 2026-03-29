@@ -31,10 +31,10 @@ def get_valid_phone_number(prompt, allow_empty=False):
     """Function to get a valid 10-digit phone number from the user."""
     while True:
         phone_number = get_str_input(prompt, allow_empty)
+        if allow_empty and not phone_number:
+            return None
         if phone_number.isdigit() and len(phone_number) == 10:
             return phone_number
-        elif allow_empty and not phone_number:
-            return None
         else:
             print("Invalid phone number. Please enter a 10-digit phone number.")
 
@@ -96,7 +96,7 @@ def search_student_data(student_data):
 
         if search_choice == 1:
             roll_number = get_int_input("Enter roll number to search: ")
-            student_info = student_data.get(roll_number)
+            student_info = student_data.get(str(roll_number))
             if student_info:
                 print("\nData found in the repository:")
                 display_student_info(student_info)
@@ -157,7 +157,7 @@ def show_all_students_data(student_data):
 def save_data_to_file(data, filename="student_data.json"):
     """Function to save student data to a JSON file."""
     with open(filename, "w") as file:
-        json.dump(data, file)
+        json.dump(data, file, indent=2)
 
 def load_data_from_file(filename="student_data.json"):
     """Function to load student data from a JSON file."""
@@ -202,6 +202,9 @@ def main():
 
         if choice == 1:
             num_students = get_int_input("Enter the number of students: ")
+            if num_students <= 0:
+                print("Please enter a positive number.")
+                continue
             for i in range(num_students):
                 print(f"\nEntering details for student {i+1}:")
                 
@@ -229,7 +232,7 @@ def main():
 
         elif choice == 2:
             roll_number = get_int_input("Enter the roll number of the student to edit: ")
-            edit_student_data(student_data, roll_number)
+            edit_student_data(student_data, str(roll_number))
             save_data_to_file(student_data)  # Save the updated data
 
         elif choice == 3:
