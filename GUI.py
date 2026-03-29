@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk
 import json
 import re
 
@@ -70,14 +70,28 @@ class StudentManagementSystem:
         ]
 
         self.nav_buttons = []
-        for text, command in nav_items:
-            btn = tk.Label(self.sidebar, text=text, font=("Helvetica", 12),
+        for idx, (text, command) in enumerate(nav_items):
+            btn_frame = tk.Frame(self.sidebar, bg=self.SIDEBAR_BG)
+            btn_frame.pack(fill=tk.X)
+
+            btn = tk.Label(btn_frame, text=text, font=("Helvetica", 12),
                            bg=self.SIDEBAR_BG, fg=self.TEXT_ON_DARK,
                            anchor="w", padx=20, pady=12, cursor="hand2")
-            btn.pack(fill=tk.X)
-            btn.bind("<Enter>", lambda e, b=btn: self._on_nav_hover(b, True))
-            btn.bind("<Leave>", lambda e, b=btn: self._on_nav_hover(b, False))
+            btn.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            # Add badge to "View All" nav item
+            if idx == 4:
+                count = len(self.student_data)
+                self._badge_label = tk.Label(btn_frame, text=str(count) if count < 1000 else "999+",
+                                             font=("Helvetica", 9, "bold"), bg=self.SIDEBAR_ACTIVE,
+                                             fg="white", padx=6, pady=1)
+                self._badge_label.pack(side=tk.RIGHT, padx=(0, 15))
+                self._badge_label.bind("<Button-1>", lambda e, b=btn, c=command: self._on_nav_click(b, c))
+
+            btn.bind("<Enter>", lambda e, b=btn, f=btn_frame: self._on_nav_hover(b, True, f))
+            btn.bind("<Leave>", lambda e, b=btn, f=btn_frame: self._on_nav_hover(b, False, f))
             btn.bind("<Button-1>", lambda e, b=btn, c=command: self._on_nav_click(b, c))
+            btn._parent_frame = btn_frame
             self.nav_buttons.append(btn)
 
         # Exit at bottom
@@ -103,21 +117,62 @@ class StudentManagementSystem:
         self._on_nav_click(self.nav_buttons[0], self.show_welcome)
 
     # --- Navigation helpers ---
-    def _on_nav_hover(self, btn, entering):
+    def _on_nav_hover(self, btn, entering, frame=None):
         if btn == self.active_btn:
             return
-        btn.configure(bg=self.SIDEBAR_HOVER if entering else self.SIDEBAR_BG)
+        bg = self.SIDEBAR_HOVER if entering else self.SIDEBAR_BG
+        btn.configure(bg=bg)
+        if frame:
+            frame.configure(bg=bg)
 
     def _on_nav_click(self, btn, command):
         if self.active_btn:
             self.active_btn.configure(bg=self.SIDEBAR_BG, fg=self.TEXT_ON_DARK)
+            if hasattr(self.active_btn, '_parent_frame'):
+                self.active_btn._parent_frame.configure(bg=self.SIDEBAR_BG)
         btn.configure(bg=self.SIDEBAR_ACTIVE, fg=self.TEXT_ON_PRIMARY)
+        if hasattr(btn, '_parent_frame'):
+            btn._parent_frame.configure(bg=self.SIDEBAR_ACTIVE)
         self.active_btn = btn
         command()
 
     def clear_content(self):
         for widget in self.content_frame.winfo_children():
             widget.destroy()
+
+    # --- Toast notifications ---
+    def _show_toast(self, message, toast_type="success"):
+        """Show a non-blocking toast notification that auto-dismisses."""
+        colors = {
+            "success": ("#10b981", "#065f46", "✓"),
+            "error": ("#ef4444", "#7f1d1d", "✕"),
+            "info": ("#3b82f6", "#1e3a5f", "ℹ"),
+        }
+        bg, fg_dark, icon = colors.get(toast_type, colors["info"])
+
+        toast = tk.Frame(self.root, bg=bg, highlightbackground=bg, highlightthickness=0)
+        toast.place(relx=1.0, y=15, anchor="ne", x=-15)
+
+        inner = tk.Frame(toast, bg=bg)
+        inner.pack(padx=16, pady=10)
+        tk.Label(inner, text=f"{icon}  {message}", font=("Helvetica", 11, "bold"),
+                 bg=bg, fg="white").pack(side=tk.LEFT)
+
+        close_btn = tk.Label(inner, text=" ✕", font=("Helvetica", 11, "bold"),
+                             bg=bg, fg="white", cursor="hand2")
+        close_btn.pack(side=tk.LEFT, padx=(12, 0))
+        close_btn.bind("<Button-1>", lambda e: toast.destroy())
+
+        self.root.after(3000, lambda: toast.destroy() if toast.winfo_exists() else None)
+
+    # --- Sidebar badge ---
+    def _update_badge(self):
+        """Update the student count badge in the sidebar."""
+        count = len(self.student_data)
+        text = str(count) if count < 1000 else "999+"
+        if hasattr(self, '_badge_label'):
+            self._badge_label.configure(text=text)
+        # Also refresh dashboard if it's the active view
 
     # --- Reusable UI components ---
     def _make_card(self, parent, **kwargs):
@@ -234,31 +289,31 @@ class StudentManagementSystem:
         roll, name, phone, email = [e.get().strip() for e in self._add_entries]
 
         if not all([roll, name, phone, email]):
-            messagebox.showerror("Error", "All fields are required")
+            self._show_toast("All fields are required", "error")
             return
         if not roll.isdigit():
-            messagebox.showerror("Error", "Roll number must be a valid integer")
+            self._show_toast("Roll number must be a valid integer", "error")
             return
         if roll in self.student_data:
-            messagebox.showerror("Error", "A student with this roll number already exists")
+            self._show_toast("A student with this roll number already exists", "error")
             return
         if not self.is_valid_name(name):
-            messagebox.showerror("Error", "Invalid name. Only letters, spaces, hyphens, and apostrophes are allowed")
+            self._show_toast("Invalid name. Only letters, spaces, hyphens, and apostrophes allowed", "error")
             return
         if not (phone.isdigit() and len(phone) == 10):
-            messagebox.showerror("Error", "Phone number must be exactly 10 digits")
+            self._show_toast("Phone number must be exactly 10 digits", "error")
             return
         if not self.is_valid_email(email):
-            messagebox.showerror("Error", "Invalid email format")
+            self._show_toast("Invalid email format", "error")
             return
 
         dup = self._check_duplicate('phone_number', phone)
         if dup:
-            messagebox.showerror("Error", f"Phone number already belongs to student with roll number {dup}")
+            self._show_toast(f"Phone number already belongs to roll number {dup}", "error")
             return
         dup = self._check_duplicate('email', email.lower())
         if dup:
-            messagebox.showerror("Error", f"Email already belongs to student with roll number {dup}")
+            self._show_toast(f"Email already belongs to roll number {dup}", "error")
             return
 
         self.student_data[roll] = {
@@ -267,7 +322,8 @@ class StudentManagementSystem:
             'email': email.lower()
         }
         self.save_data_to_file()
-        messagebox.showinfo("Success", "Student added successfully")
+        self._update_badge()
+        self._show_toast("Student added successfully")
         for e in self._add_entries:
             e.delete(0, tk.END)
 
@@ -299,10 +355,10 @@ class StudentManagementSystem:
 
         roll = self.edit_roll_entry.get().strip()
         if not roll:
-            messagebox.showerror("Error", "Please enter a roll number")
+            self._show_toast("Please enter a roll number", "error")
             return
         if roll not in self.student_data:
-            messagebox.showerror("Error", "No student found with that roll number")
+            self._show_toast("No student found with that roll number", "error")
             return
 
         student = self.student_data[roll]
@@ -330,25 +386,25 @@ class StudentManagementSystem:
         name, phone, email = [e.get().strip() for e in self._edit_entries]
 
         if not all([name, phone, email]):
-            messagebox.showerror("Error", "All fields are required")
+            self._show_toast("All fields are required", "error")
             return
         if not self.is_valid_name(name):
-            messagebox.showerror("Error", "Invalid name")
+            self._show_toast("Invalid name", "error")
             return
         if not (phone.isdigit() and len(phone) == 10):
-            messagebox.showerror("Error", "Phone number must be exactly 10 digits")
+            self._show_toast("Phone number must be exactly 10 digits", "error")
             return
         if not self.is_valid_email(email):
-            messagebox.showerror("Error", "Invalid email format")
+            self._show_toast("Invalid email format", "error")
             return
 
         dup = self._check_duplicate('phone_number', phone, exclude_roll=roll_number)
         if dup:
-            messagebox.showerror("Error", f"Phone number already belongs to student with roll number {dup}")
+            self._show_toast(f"Phone number already belongs to roll number {dup}", "error")
             return
         dup = self._check_duplicate('email', email.lower(), exclude_roll=roll_number)
         if dup:
-            messagebox.showerror("Error", f"Email already belongs to student with roll number {dup}")
+            self._show_toast(f"Email already belongs to roll number {dup}", "error")
             return
 
         self.student_data[roll_number] = {
@@ -357,7 +413,7 @@ class StudentManagementSystem:
             'email': email.lower()
         }
         self.save_data_to_file()
-        messagebox.showinfo("Success", "Student updated successfully")
+        self._show_toast("Student updated successfully")
         self.show_edit_student()
 
     def show_search_student(self):
@@ -402,7 +458,7 @@ class StudentManagementSystem:
         val = self.search_entry.get().strip()
         stype = self.search_type.get()
         if not val:
-            messagebox.showerror("Error", "Please enter a search value")
+            self._show_toast("Please enter a search value", "error")
             return
 
         results = []
@@ -516,8 +572,8 @@ class StudentManagementSystem:
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
 
         # Header
-        headers = ["Roll No.", "Name", "Phone", "Email"]
-        widths = [10, 22, 15, 30]
+        headers = ["Roll No.", "Name", "Phone", "Email", ""]
+        widths = [10, 20, 14, 28, 8]
         header_row = tk.Frame(scroll_frame, bg=self.TABLE_HEADER_BG)
         header_row.pack(fill=tk.X)
         for h, w in zip(headers, widths):
@@ -530,9 +586,62 @@ class StudentManagementSystem:
             row = tk.Frame(scroll_frame, bg=bg)
             row.pack(fill=tk.X)
             vals = [roll, s['name'], s['phone_number'], s['email']]
-            for v, w in zip(vals, widths):
+            for v, w in zip(vals, widths[:-1]):
                 tk.Label(row, text=v, font=("Helvetica", 10), bg=bg,
                          fg=self.TEXT_PRIMARY, width=w, anchor="w", padx=15, pady=8).pack(side=tk.LEFT)
+            # Delete button
+            del_btn = tk.Label(row, text="🗑 Delete", font=("Helvetica", 9, "bold"),
+                               bg=bg, fg=self.DANGER, cursor="hand2", padx=10, pady=6)
+            del_btn.pack(side=tk.LEFT)
+            del_btn.bind("<Enter>", lambda e, b=del_btn: b.configure(fg=self.DANGER_HOVER))
+            del_btn.bind("<Leave>", lambda e, b=del_btn, c=bg: b.configure(fg=self.DANGER))
+            del_btn.bind("<Button-1>", lambda e, r=roll: self._delete_student(r))
+
+    def _delete_student(self, roll_number):
+        """Delete a student after confirmation via a small dialog."""
+        name = self.student_data.get(roll_number, {}).get('name', 'Unknown')
+
+        confirm = tk.Toplevel(self.root)
+        confirm.title("Confirm Delete")
+        confirm.geometry("360x150")
+        confirm.resizable(False, False)
+        confirm.configure(bg=self.CARD_BG)
+        confirm.transient(self.root)
+        confirm.grab_set()
+
+        # Center on parent
+        confirm.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - 360) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 150) // 2
+        confirm.geometry(f"+{x}+{y}")
+
+        tk.Label(confirm, text=f"Delete {name} (Roll: {roll_number})?",
+                 font=("Helvetica", 12, "bold"), bg=self.CARD_BG, fg=self.TEXT_PRIMARY).pack(pady=(20, 5))
+        tk.Label(confirm, text="This action cannot be undone.",
+                 font=("Helvetica", 10), bg=self.CARD_BG, fg=self.TEXT_SECONDARY).pack()
+
+        btn_frame = tk.Frame(confirm, bg=self.CARD_BG)
+        btn_frame.pack(pady=15)
+
+        def do_delete():
+            del self.student_data[roll_number]
+            self.save_data_to_file()
+            self._update_badge()
+            confirm.destroy()
+            self._show_toast(f"Deleted {name} (Roll: {roll_number})")
+            self.show_all_students()
+
+        cancel_btn = tk.Label(btn_frame, text="Cancel", font=("Helvetica", 10, "bold"),
+                              bg=self.BORDER, fg=self.TEXT_PRIMARY, padx=18, pady=8, cursor="hand2")
+        cancel_btn.pack(side=tk.LEFT, padx=(0, 10))
+        cancel_btn.bind("<Button-1>", lambda e: confirm.destroy())
+
+        del_btn = tk.Label(btn_frame, text="Delete", font=("Helvetica", 10, "bold"),
+                           bg=self.DANGER, fg="white", padx=18, pady=8, cursor="hand2")
+        del_btn.pack(side=tk.LEFT)
+        del_btn.bind("<Enter>", lambda e: del_btn.configure(bg=self.DANGER_HOVER))
+        del_btn.bind("<Leave>", lambda e: del_btn.configure(bg=self.DANGER))
+        del_btn.bind("<Button-1>", lambda e: do_delete())
 
     # --- Validation & Data ---
     def _check_duplicate(self, field, value, exclude_roll=None):
