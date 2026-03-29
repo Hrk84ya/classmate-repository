@@ -385,20 +385,22 @@ class StudentManagementSystem:
             return
 
         results = []
+        val_lower = val.lower()
         if stype == "roll":
-            if val in self.student_data:
-                results.append((val, self.student_data[val]))
+            for r, s in self.student_data.items():
+                if val in r:
+                    results.append((r, s))
         elif stype == "name":
             for r, s in self.student_data.items():
-                if s['name'].lower() == val.lower():
+                if val_lower in s['name'].lower():
                     results.append((r, s))
         elif stype == "phone":
             for r, s in self.student_data.items():
-                if s['phone_number'] == val:
+                if val in s['phone_number']:
                     results.append((r, s))
         elif stype == "email":
             for r, s in self.student_data.items():
-                if s['email'].lower() == val.lower():
+                if val_lower in s['email'].lower():
                     results.append((r, s))
 
         if results:

@@ -95,46 +95,49 @@ def search_student_data(student_data):
         search_choice = get_int_input("Enter your choice: ")
 
         if search_choice == 1:
-            roll_number = get_int_input("Enter roll number to search: ")
-            student_info = student_data.get(str(roll_number))
-            if student_info:
-                print("\nData found in the repository:")
-                display_student_info(student_info)
-            else:
-                print("No student found with that roll number.")
+            query = get_str_input("Enter roll number to search: ")
+            found = False
+            for roll, student_info in student_data.items():
+                if query in roll:
+                    print("\nData found in the repository:")
+                    print(f"Roll Number: {roll}")
+                    display_student_info(student_info)
+                    found = True
+            if not found:
+                print("No student found matching that roll number.")
         
         elif search_choice == 2:
             name = get_str_input("Enter name to search: ")
             found = False
             for student_info in student_data.values():
-                if student_info['name'].lower() == name.lower():
+                if name.lower() in student_info['name'].lower():
                     print("\nData found in the repository:")
                     display_student_info(student_info)
                     found = True
             if not found:
-                print("No student found with that name.")
+                print("No student found matching that name.")
         
         elif search_choice == 3:
-            phone_number = get_valid_phone_number("Enter phone number to search: ")
+            phone = get_str_input("Enter phone number to search: ")
             found = False
             for student_info in student_data.values():
-                if student_info['phone_number'] == phone_number:
+                if phone in student_info['phone_number']:
                     print("\nData found in the repository:")
                     display_student_info(student_info)
                     found = True
             if not found:
-                print("No student found with that phone number.")
+                print("No student found matching that phone number.")
         
         elif search_choice == 4:
-            email = get_valid_email("Enter email to search: ")
+            email = get_str_input("Enter email to search: ")
             found = False
             for student_info in student_data.values():
-                if student_info['email'].lower() == email.lower():
+                if email.lower() in student_info['email'].lower():
                     print("\nData found in the repository:")
                     display_student_info(student_info)
                     found = True
             if not found:
-                print("No student found with that email.")
+                print("No student found matching that email.")
         
         elif search_choice == 5:
             break
